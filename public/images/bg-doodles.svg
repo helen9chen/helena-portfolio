@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640">
+<g fill="none" stroke-linecap="round" opacity="0.42">
+<g transform="translate(110,130)" stroke="#D9B24A" stroke-width="3">
+<circle r="7"></circle>
+<ellipse rx="8" ry="22" cy="-32"></ellipse>
+<g transform="rotate(72)"><ellipse rx="8" ry="22" cy="-32"></ellipse></g>
+<g transform="rotate(144)"><ellipse rx="8" ry="22" cy="-32"></ellipse></g>
+<g transform="rotate(216)"><ellipse rx="8" ry="22" cy="-32"></ellipse></g>
+<g transform="rotate(288)"><ellipse rx="8" ry="22" cy="-32"></ellipse></g>
+<path d="M4 40 C 10 90 -6 120 2 160"></path>
+</g>
+<g transform="translate(478,84) scale(.72)" stroke="#E39FB4" stroke-width="3.6">
+<circle r="7"></circle>
+<ellipse rx="8" ry="22" cy="-30"></ellipse>
+<g transform="rotate(72)"><ellipse rx="8" ry="22" cy="-30"></ellipse></g>
+<g transform="rotate(144)"><ellipse rx="8" ry="22" cy="-30"></ellipse></g>
+<g transform="rotate(216)"><ellipse rx="8" ry="22" cy="-30"></ellipse></g>
+<g transform="rotate(288)"><ellipse rx="8" ry="22" cy="-30"></ellipse></g>
+</g>
+<g transform="translate(316,332)" stroke="#9FB0CF" stroke-width="3">
+<circle r="6"></circle>
+<ellipse rx="7" ry="16" cy="-23"></ellipse>
+<g transform="rotate(120)"><ellipse rx="7" ry="16" cy="-23"></ellipse></g>
+<g transform="rotate(240)"><ellipse rx="7" ry="16" cy="-23"></ellipse></g>
+</g>
+<g fill="#8B8578" stroke="none" opacity=".62">
+<g transform="translate(196,552) rotate(24)">
+<ellipse cx="0" cy="5" rx="5" ry="4.5"></ellipse>
+<ellipse cx="-6.5" cy="-5" rx="2.5" ry="6.5" transform="rotate(-24 -6.5 -5)"></ellipse>
+<ellipse cx="0" cy="-7.5" rx="2.5" ry="6.5"></ellipse>
+<ellipse cx="6.5" cy="-5" rx="2.5" ry="6.5" transform="rotate(24 6.5 -5)"></ellipse>
+</g>
+<g transform="translate(244,508) rotate(30)">
+<ellipse cx="0" cy="5" rx="5" ry="4.5"></ellipse>
+<ellipse cx="-6.5" cy="-5" rx="2.5" ry="6.5" transform="rotate(-24 -6.5 -5)"></ellipse>
+<ellipse cx="0" cy="-7.5" rx="2.5" ry="6.5"></ellipse>
+<ellipse cx="6.5" cy="-5" rx="2.5" ry="6.5" transform="rotate(24 6.5 -5)"></ellipse>
+</g>
+<g transform="translate(286,458) rotate(18)">
+<ellipse cx="0" cy="5" rx="5" ry="4.5"></ellipse>
+<ellipse cx="-6.5" cy="-5" rx="2.5" ry="6.5" transform="rotate(-24 -6.5 -5)"></ellipse>
+<ellipse cx="0" cy="-7.5" rx="2.5" ry="6.5"></ellipse>
+<ellipse cx="6.5" cy="-5" rx="2.5" ry="6.5" transform="rotate(24 6.5 -5)"></ellipse>
+</g>
+<g transform="translate(560,190) rotate(-15) scale(.8)">
+<ellipse cx="0" cy="5" rx="5" ry="4.5"></ellipse>
+<ellipse cx="-6.5" cy="-5" rx="2.5" ry="6.5" transform="rotate(-24 -6.5 -5)"></ellipse>
+<ellipse cx="0" cy="-7.5" rx="2.5" ry="6.5"></ellipse>
+<ellipse cx="6.5" cy="-5" rx="2.5" ry="6.5" transform="rotate(24 6.5 -5)"></ellipse>
+</g>
+<g transform="translate(40,260) rotate(-30) scale(.8)">
+<ellipse cx="0" cy="5" rx="5" ry="4.5"></ellipse>
+<ellipse cx="-6.5" cy="-5" rx="2.5" ry="6.5" transform="rotate(-24 -6.5 -5)"></ellipse>
+<ellipse cx="0" cy="-7.5" rx="2.5" ry="6.5"></ellipse>
+<ellipse cx="6.5" cy="-5" rx="2.5" ry="6.5" transform="rotate(24 6.5 -5)"></ellipse>
+</g>
+</g>
+</g>
+</svg>

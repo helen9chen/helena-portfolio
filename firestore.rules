@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Projects are public to read (the portfolio shows them).
+    match /projects/{id} {
+      allow read: if true;
+      allow write: if true; // see README — tighten this before going live
+    }
+
+    // The admin password hash must be readable so /admin can verify it.
+    match /settings/admin {
+      allow read: if true;
+      // Only allow creating it once (first-time setup); never updating from the client.
+      allow create: if request.resource.data.passwordHash is string;
+      allow update, delete: if false;
+    }
+
+    // Anyone may leave a contact note; only reading them is unrestricted
+    // so /admin can list them (tighten with Firebase Auth if needed).
+    match /messages/{id} {
+      allow create: if true;
+      allow read: if true;
+      allow update, delete: if false;
+    }
+  }
+}
