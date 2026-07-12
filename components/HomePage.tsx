@@ -41,6 +41,7 @@ export default function HomePage() {
   );
   const [loadingProjects, setLoadingProjects] = useState(firebaseConfigured);
   const [navOn, setNavOn] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [peek, setPeek] = useState(false);
   const [peekBubble, setPeekBubble] = useState(false);
   const [footQuiet, setFootQuiet] = useState(false);
@@ -246,10 +247,10 @@ export default function HomePage() {
       <Frog lang={lang} />
       <div className="site" id="top">
         <header className="nav">
-          <a href="#top" className="brand">
+          <a href="#top" className="brand" onClick={() => setMenuOpen(false)}>
             <img className="logo-img" src="/images/logo.png" alt="蛙の葉書" />
           </a>
-          <nav className="links">
+          <nav className={"links" + (menuOpen ? " open" : "")} id="mobile-nav">
             {(
               [
                 ["about", "navAbout"],
@@ -261,28 +262,42 @@ export default function HomePage() {
                 key={target}
                 href={"#" + target}
                 className={"nlink navlink" + (navOn === target ? " nav-on" : "")}
-                onClick={(e) => onNavClick(e, target)}
+                onClick={(e) => {
+                  onNavClick(e, target);
+                  setMenuOpen(false);
+                }}
               >
                 {t(key)}
               </a>
             ))}
           </nav>
-          <div className="langsw" role="group" aria-label="Language">
-            {(
-              [
-                ["en", "EN"],
-                ["zh", "中"],
-                ["ja", "日"],
-              ] as const
-            ).map(([code, label]) => (
-              <button
-                key={code}
-                className={lang === code ? "on" : ""}
-                onClick={() => setLang(code)}
-              >
-                {label}
-              </button>
-            ))}
+          <div className="nav-actions">
+            <div className="langsw" role="group" aria-label="Language">
+              {(
+                [
+                  ["en", "EN"],
+                  ["zh", "中"],
+                  ["ja", "日"],
+                ] as const
+              ).map(([code, label]) => (
+                <button
+                  key={code}
+                  className={lang === code ? "on" : ""}
+                  onClick={() => setLang(code)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button
+              className={"hamburger" + (menuOpen ? " open" : "")}
+              aria-label="Menu"
+              aria-expanded={menuOpen}
+              aria-controls="mobile-nav"
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              <span />
+            </button>
           </div>
         </header>
 
