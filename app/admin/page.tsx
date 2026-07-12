@@ -20,6 +20,7 @@ import {
   type ProjectCat,
   type ProjectPh,
 } from "@/lib/projects";
+import { fileToCompressedDataUrl } from "@/lib/image";
 
 const PH_OPTIONS: ProjectPh[] = ["ph-sage", "ph-moss", "ph-brown", "ph-clay"];
 const CAT_OPTIONS: ProjectCat[] = ["branding", "marketing", "design"];
@@ -62,6 +63,7 @@ export default function AdminPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [editing, setEditing] = useState<Project | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const db = getDb();
 
@@ -201,6 +203,23 @@ export default function AdminPage() {
       console.error(e);
     }
     setSaving(false);
+  };
+
+  const onPickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !editing) return;
+    setUploading(true);
+    setError("");
+    try {
+      const dataUrl = await fileToCompressedDataUrl(file);
+      setEditing((prev) => (prev ? { ...prev, image: dataUrl } : prev));
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not process that image."
+      );
+    }
+    setUploading(false);
   };
 
   const removeProject = async (p: Project) => {
@@ -375,7 +394,17 @@ export default function AdminPage() {
           <div className="proj-list">
             {projects.map((p, i) => (
               <div className="proj-item" key={p.id}>
-                <span className="swatch" style={{ background: SWATCH[p.ph] ?? "#ddd" }} />
+                {p.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    className="swatch"
+                    src={p.image}
+                    alt=""
+                    style={{ objectFit: "cover" }}
+                  />
+                ) : (
+                  <span className="swatch" style={{ background: SWATCH[p.ph] ?? "#ddd" }} />
+                )}
                 <div className="pi-main">
                   <div className="pi-title">{p.title}</div>
                   <div className="pi-meta">
@@ -473,11 +502,49 @@ export default function AdminPage() {
                   />
                 </div>
                 <div className="field full">
-                  <label>Image URL (optional, replaces the color placeholder)</label>
+                  <label>Project image (optional, replaces the color placeholder)</label>
+                  <div className="admin-row">
+                    <label className="btn btn-g btn-sm" style={{ cursor: "pointer" }}>
+                      {uploading ? "Processing…" : "Upload image"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={onPickImage}
+                        disabled={uploading}
+                        style={{ display: "none" }}
+                      />
+                    </label>
+                    {editing.image && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-danger"
+                        onClick={() => setEditing({ ...editing, image: "" })}
+                      >
+                        Remove image
+                      </button>
+                    )}
+                  </div>
+                  {editing.image && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={editing.image}
+                      alt="Preview"
+                      style={{
+                        marginTop: 10,
+                        width: 180,
+                        aspectRatio: "4 / 3",
+                        objectFit: "cover",
+                        borderRadius: 12,
+                        border: "1px solid var(--line)",
+                        display: "block",
+                      }}
+                    />
+                  )}
                   <input
-                    value={editing.image ?? ""}
+                    style={{ marginTop: 10 }}
+                    value={editing.image?.startsWith("data:") ? "" : editing.image ?? ""}
                     onChange={(e) => setEditing({ ...editing, image: e.target.value })}
-                    placeholder="https://… or /images/…"
+                    placeholder="…or paste an image URL (https://… or /images/…)"
                   />
                 </div>
                 <div className="field full">

@@ -5,7 +5,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { T, footTips, peekTexts, type Lang } from "@/lib/i18n";
 import { defaultProjects, fetchProjects, type Project } from "@/lib/projects";
-import { getDb } from "@/lib/firebase";
+import { firebaseConfigured, getDb } from "@/lib/firebase";
+import { sendContactEmail } from "@/lib/email";
 import Frog from "./Frog";
 
 const PETALS = [
@@ -31,7 +32,14 @@ export default function HomePage() {
   const [lang, setLang] = useState<Lang>("en");
   const [active, setActive] = useState<TabId>("all");
   const [sent, setSent] = useState(false);
-  const [projects, setProjects] = useState<Project[]>(defaultProjects);
+  const [sending, setSending] = useState(false);
+  const [contactError, setContactError] = useState("");
+  // When Firebase is configured we fetch from Firestore, so start empty and
+  // show a spinner; otherwise there's nothing to load — show the defaults.
+  const [projects, setProjects] = useState<Project[]>(
+    firebaseConfigured ? [] : defaultProjects
+  );
+  const [loadingProjects, setLoadingProjects] = useState(firebaseConfigured);
   const [navOn, setNavOn] = useState<string | null>(null);
   const [peek, setPeek] = useState(false);
   const [peekBubble, setPeekBubble] = useState(false);
@@ -59,9 +67,16 @@ export default function HomePage() {
   }, [lang]);
 
   useEffect(() => {
+    if (!firebaseConfigured) return;
+    let cancelled = false;
     fetchProjects().then((p) => {
-      if (p && p.length) setProjects(p);
+      if (cancelled) return;
+      setProjects(p && p.length ? p : defaultProjects);
+      setLoadingProjects(false);
     });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // active nav section highlighting
@@ -151,9 +166,27 @@ export default function HomePage() {
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (sending) return;
     const fd = new FormData(e.currentTarget);
-    setSent(true);
-    // Best-effort: also store the note in Firestore so it shows up in /admin.
+    const name = String(fd.get("name") || "");
+    const email = String(fd.get("email") || "");
+    const message = String(fd.get("message") || "");
+    const time = new Date().toLocaleString();
+
+    setSending(true);
+    setContactError("");
+
+    // 1) Send the email first.
+    try {
+      await sendContactEmail({ name, email, message, time });
+    } catch (err) {
+      console.error(err);
+      setSending(false);
+      setContactError(t("fSendError"));
+      return; // don't save or clear the form so the visitor can retry
+    }
+
+    // 2) Then store the note in Firestore so it shows up in /admin.
     const db = getDb();
     if (db) {
       try {
@@ -161,13 +194,19 @@ export default function HomePage() {
           "firebase/firestore"
         );
         await addDoc(collection(db, "messages"), {
-          name: String(fd.get("name") || ""),
-          email: String(fd.get("email") || ""),
-          message: String(fd.get("message") || ""),
+          name,
+          email,
+          message,
           createdAt: serverTimestamp(),
         });
-      } catch {}
+      } catch (err) {
+        // The email already went out, so still confirm success to the visitor.
+        console.error(err);
+      }
     }
+
+    setSending(false);
+    setSent(true);
   };
 
   const footPeek = () => {
@@ -317,7 +356,14 @@ export default function HomePage() {
               ))}
             </div>
             <div className="grid-cards hover-lift">
-              {cards.map((p) => {
+              {loadingProjects && (
+                <div className="work-loading">
+                  <div className="spinner" role="status" aria-label="Loading projects" />
+                  <span>{t("loadingProjects")}</span>
+                </div>
+              )}
+              {!loadingProjects &&
+                cards.map((p) => {
                 const card = (
                   <article className="card" key={(p.id ?? p.title) + p.num}>
                     <div className={"ph " + p.ph + (p.image ? " ph-img" : "")}>
@@ -446,9 +492,10 @@ export default function HomePage() {
                 <label>{t("fMsg")}</label>
                 <textarea name="message" placeholder={t("phMsg")} required />
               </div>
-              <button type="submit" className="btn btn-p">
-                {t("fSend")}
+              <button type="submit" className="btn btn-p" disabled={sending}>
+                {sending ? t("fSending") : t("fSend")}
               </button>
+              {contactError && <p className="cerror">{contactError}</p>}
               <p className="cnote">
                 <span>{t("fNote")}</span>{" "}
                 <a

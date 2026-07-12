@@ -1,0 +1,75 @@
+<!--
+  EmailJS template for the Kaeru Portfolio contact form.
+  Paste the markup below into EmailJS → Email Templates → (your template) → Content → Edit as HTML.
+  Variables used: {{name}}, {{email}}, {{time}}, {{message}}
+  In the template's settings, set "Reply To" to {{email}} so you can reply straight from your inbox.
+-->
+<div style="font-family: system-ui, -apple-system, 'Segoe UI', sans-serif, Arial; font-size: 14px; color: #3C3B36; background-color: #F4EFE4; padding: 24px;">
+  <div style="max-width: 560px; margin: 0 auto; background-color: #FBF8F0; border: 1px solid #E2DAC8; border-radius: 16px; overflow: hidden;">
+    <div style="background-color: #7C8F5A; padding: 18px 24px; color: #FBF8F0; font-size: 15px; letter-spacing: 0.02em;">
+      🐸 &nbsp;A new note landed in the terrarium
+    </div>
+    <div style="padding: 24px;">
+      <div style="font-size: 14px; color: #7C766A; line-height: 1.7;">
+        A message from <strong style="color: #3C3B36;">{{name}}</strong> has been received.
+        Kindly respond at your earliest convenience.
+      </div>
+      <div
+        style="
+          margin-top: 20px;
+          padding: 18px 0;
+          border-width: 1px 0;
+          border-style: dashed;
+          border-color: #E2DAC8;
+        "
+      >
+        <table role="presentation" style="border-collapse: collapse;">
+          <tr>
+            <td style="vertical-align: top;">
+              <div
+                style="
+                  padding: 8px 12px;
+                  margin: 0 12px 0 0;
+                  background-color: #EBE4D5;
+                  border-radius: 8px;
+                  font-size: 26px;
+                "
+                role="img"
+              >
+                👤
+              </div>
+            </td>
+            <td style="vertical-align: top;">
+              <div style="color: #3C3B36; font-size: 16px;">
+                <strong>{{name}}</strong>
+              </div>
+              <div style="color: #A89F8D; font-size: 13px; margin: 2px 0 4px;">{{time}}</div>
+              <div style="font-size: 13px;">
+                <a href="mailto:{{email}}" style="color: #7C8F5A; text-decoration: none;">{{email}}</a>
+              </div>
+              <p style="font-size: 15px; line-height: 1.75; color: #3C3B36; white-space: pre-line;">{{message}}</p>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <a
+        href="mailto:{{email}}"
+        style="
+          display: inline-block;
+          margin-top: 6px;
+          padding: 10px 20px;
+          background-color: #7C8F5A;
+          color: #FBF8F0;
+          border-radius: 999px;
+          text-decoration: none;
+          font-size: 14px;
+        "
+      >
+        Reply to {{name}}
+      </a>
+    </div>
+    <div style="padding: 14px 24px; font-size: 12px; color: #A89F8D; border-top: 1px solid #E2DAC8; font-family: 'Cormorant Garamond', serif;">
+      蛙の葉書 · Kaeru Portfolio — made from little observations.
+    </div>
+  </div>
+</div>
