@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { localizedDesc, localizedTitle, projectImages, type Project } from "@/lib/projects";
 import type { Lang } from "@/lib/i18n";
+import Lightbox from "./Lightbox";
 
 interface Props {
   project: Project & { num: string };
@@ -16,57 +17,32 @@ export default function ProjectCard({ project: p, viewLabel, lang }: Props) {
   const images = projectImages(p);
   const title = localizedTitle(p, lang);
   const desc = localizedDesc(p, lang);
-  const [index, setIndex] = useState(0);
-  const multi = images.length > 1;
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
-  const go = (e: React.MouseEvent, dir: 1 | -1) => {
+  const openLightbox = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIndex((i) => (i + dir + images.length) % images.length);
-  };
-  const goTo = (e: React.MouseEvent, i: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIndex(i);
+    setLightboxOpen(true);
   };
 
   return (
     <article className="card">
-      <div className={"ph " + p.ph + (images.length ? " ph-img" : "")}>
-        {images.length > 0 && <img src={images[index]} alt={`${title} — photo ${index + 1}`} />}
-        <span className="phlabel mono">{p.slot}</span>
-        {multi && (
-          <>
-            <button
-              type="button"
-              className="ph-nav ph-prev"
-              aria-label="Previous photo"
-              onClick={(e) => go(e, -1)}
-            >
-              ‹
-            </button>
-            <button
-              type="button"
-              className="ph-nav ph-next"
-              aria-label="Next photo"
-              onClick={(e) => go(e, 1)}
-            >
-              ›
-            </button>
-            <div className="ph-dots">
-              {images.map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  className={"ph-dot" + (i === index ? " on" : "")}
-                  aria-label={`Photo ${i + 1}`}
-                  onClick={(e) => goTo(e, i)}
-                />
-              ))}
-            </div>
-          </>
-        )}
-      </div>
+      {images.length > 0 ? (
+        <button
+          type="button"
+          className={"ph ph-img " + p.ph}
+          onClick={openLightbox}
+          aria-label={`Open photo gallery for ${title} — ${images.length} photo${images.length > 1 ? "s" : ""}`}
+        >
+          <img src={images[0]} alt={title} />
+          <span className="phlabel mono">{p.slot}</span>
+          {images.length > 1 && <span className="ph-count mono">{images.length} photos</span>}
+        </button>
+      ) : (
+        <div className={"ph " + p.ph}>
+          <span className="phlabel mono">{p.slot}</span>
+        </div>
+      )}
       <div className="cbody">
         <div className="crow">
           <span className="ctag">{p.tag}</span>
@@ -78,6 +54,14 @@ export default function ProjectCard({ project: p, viewLabel, lang }: Props) {
           {viewLabel} <span className="arw">→</span>
         </span>
       </div>
+      {lightboxOpen && (
+        <Lightbox
+          images={images}
+          initialIndex={0}
+          title={title}
+          onClose={() => setLightboxOpen(false)}
+        />
+      )}
     </article>
   );
 }
