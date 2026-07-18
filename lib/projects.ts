@@ -5,7 +5,7 @@ import type { Lang } from "./i18n";
 export type ProjectCat = "branding" | "marketing" | "design";
 export type ProjectPh = "ph-sage" | "ph-moss" | "ph-brown" | "ph-clay";
 
-export const MAX_PROJECT_IMAGES = 6;
+export const MAX_PROJECT_IMAGES = 12;
 
 // Only zh/ja need explicit overrides — English lives in the base
 // `title`/`desc` fields so every project works without any translation.
