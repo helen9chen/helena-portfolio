@@ -16,11 +16,20 @@ import {
 import { firebaseConfigured, getDb, sha256Hex } from "@/lib/firebase";
 import {
   defaultProjects,
+  MAX_PROJECT_IMAGES,
+  projectImages,
   type Project,
   type ProjectCat,
   type ProjectPh,
 } from "@/lib/projects";
 import { fileToCompressedDataUrl } from "@/lib/image";
+
+type EditLang = "en" | "zh" | "ja";
+const EDIT_LANGS: { code: EditLang; label: string }[] = [
+  { code: "en", label: "EN" },
+  { code: "zh", label: "中" },
+  { code: "ja", label: "日" },
+];
 
 const PH_OPTIONS: ProjectPh[] = ["ph-sage", "ph-moss", "ph-brown", "ph-clay"];
 const CAT_OPTIONS: ProjectCat[] = ["branding", "marketing", "design"];
@@ -39,7 +48,7 @@ const EMPTY: Project = {
   slot: "",
   desc: "",
   url: "",
-  image: "",
+  images: [],
 };
 
 interface Message {
@@ -64,6 +73,8 @@ export default function AdminPage() {
   const [editing, setEditing] = useState<Project | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const [editLang, setEditLang] = useState<EditLang>("en");
 
   const db = getDb();
 
@@ -185,7 +196,11 @@ export default function AdminPage() {
     setSaving(true);
     setError("");
     try {
-      const { id, ...data } = editing;
+      const images = (editing.images ?? []).slice(0, MAX_PROJECT_IMAGES);
+      const { id, ...rest } = editing;
+      // Keep the legacy `image` field in sync (first image) so anything
+      // still reading it — or older cached pages — shows a cover photo too.
+      const data = { ...rest, images, image: images[0] ?? "" };
       if (id) {
         await updateDoc(doc(db, "projects", id), { ...data });
       } else {
@@ -205,21 +220,75 @@ export default function AdminPage() {
     setSaving(false);
   };
 
-  const onPickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const onPickImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (!file || !editing) return;
+    if (!files.length || !editing) return;
+    const current = editing.images ?? [];
+    const room = MAX_PROJECT_IMAGES - current.length;
+    if (room <= 0) {
+      setError(`You can add up to ${MAX_PROJECT_IMAGES} images per project.`);
+      return;
+    }
+    const toProcess = files.slice(0, room);
     setUploading(true);
     setError("");
     try {
-      const dataUrl = await fileToCompressedDataUrl(file);
-      setEditing((prev) => (prev ? { ...prev, image: dataUrl } : prev));
+      const dataUrls = await Promise.all(
+        toProcess.map((f) => fileToCompressedDataUrl(f))
+      );
+      setEditing((prev) =>
+        prev ? { ...prev, images: [...(prev.images ?? []), ...dataUrls] } : prev
+      );
+      if (files.length > toProcess.length) {
+        setError(
+          `Only added ${toProcess.length} — a project can have up to ${MAX_PROJECT_IMAGES} images.`
+        );
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Could not process that image."
       );
     }
     setUploading(false);
+  };
+
+  const removeImageAt = (index: number) => {
+    setEditing((prev) =>
+      prev
+        ? { ...prev, images: (prev.images ?? []).filter((_, i) => i !== index) }
+        : prev
+    );
+  };
+
+  const addImageUrl = () => {
+    const url = imageUrlInput.trim();
+    if (!url || !editing) return;
+    const current = editing.images ?? [];
+    if (current.length >= MAX_PROJECT_IMAGES) {
+      setError(`You can add up to ${MAX_PROJECT_IMAGES} images per project.`);
+      return;
+    }
+    setEditing({ ...editing, images: [...current, url] });
+    setImageUrlInput("");
+  };
+
+  const setTranslationField = (
+    lang: "zh" | "ja",
+    field: "title" | "desc",
+    value: string
+  ) => {
+    setEditing((prev) =>
+      prev
+        ? {
+            ...prev,
+            translations: {
+              ...prev.translations,
+              [lang]: { ...prev.translations?.[lang], [field]: value },
+            },
+          }
+        : prev
+    );
   };
 
   const removeProject = async (p: Project) => {
@@ -378,7 +447,12 @@ export default function AdminPage() {
               )}
               <button
                 className="btn btn-p btn-sm"
-                onClick={() => setEditing({ ...EMPTY })}
+                onClick={() => {
+                  setEditing({ ...EMPTY });
+                  setImageUrlInput("");
+                  setEditLang("en");
+                  setError("");
+                }}
               >
                 + New project
               </button>
@@ -394,11 +468,11 @@ export default function AdminPage() {
           <div className="proj-list">
             {projects.map((p, i) => (
               <div className="proj-item" key={p.id}>
-                {p.image ? (
+                {projectImages(p)[0] ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     className="swatch"
-                    src={p.image}
+                    src={projectImages(p)[0]}
                     alt=""
                     style={{ objectFit: "cover" }}
                   />
@@ -409,6 +483,7 @@ export default function AdminPage() {
                   <div className="pi-title">{p.title}</div>
                   <div className="pi-meta">
                     {p.tag} · {p.cat} · {p.slot}
+                    {projectImages(p).length > 1 ? ` · ${projectImages(p).length} photos` : ""}
                   </div>
                 </div>
                 <div className="pi-actions">
@@ -418,7 +493,15 @@ export default function AdminPage() {
                   <button className="btn btn-g btn-sm" onClick={() => move(i, 1)} title="Move down">
                     ↓
                   </button>
-                  <button className="btn btn-g btn-sm" onClick={() => setEditing({ ...p })}>
+                  <button
+                    className="btn btn-g btn-sm"
+                    onClick={() => {
+                      setEditing({ ...p, images: projectImages(p) });
+                      setImageUrlInput("");
+                      setEditLang("en");
+                      setError("");
+                    }}
+                  >
                     Edit
                   </button>
                   <button className="btn btn-sm btn-danger" onClick={() => removeProject(p)}>
@@ -436,14 +519,51 @@ export default function AdminPage() {
         {editing && (
           <div className="admin-card">
             <h2>{editing.id ? "Edit project" : "New project"}</h2>
+            <div
+              className="admin-row"
+              style={{ justifyContent: "space-between", marginBottom: 16 }}
+            >
+              <span className="admin-note" style={{ margin: 0 }}>
+                Editing the title &amp; description in —
+              </span>
+              <div className="langsw" role="group" aria-label="Content language">
+                {EDIT_LANGS.map(({ code, label }) => (
+                  <button
+                    key={code}
+                    type="button"
+                    className={editLang === code ? "on" : ""}
+                    onClick={() => setEditLang(code)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <form onSubmit={saveProject}>
               <div className="admin-grid">
                 <div className="field">
-                  <label>Title</label>
+                  <label>
+                    Title
+                    {editLang !== "en" && (
+                      <span style={{ textTransform: "none", letterSpacing: 0 }}>
+                        {" "}
+                        · optional, falls back to English
+                      </span>
+                    )}
+                  </label>
                   <input
-                    value={editing.title}
-                    onChange={(e) => setEditing({ ...editing, title: e.target.value })}
-                    required
+                    value={
+                      editLang === "en"
+                        ? editing.title
+                        : editing.translations?.[editLang]?.title ?? ""
+                    }
+                    onChange={(e) =>
+                      editLang === "en"
+                        ? setEditing({ ...editing, title: e.target.value })
+                        : setTranslationField(editLang, "title", e.target.value)
+                    }
+                    placeholder={editLang === "en" ? undefined : editing.title}
+                    required={editLang === "en"}
                   />
                 </div>
                 <div className="field">
@@ -502,57 +622,90 @@ export default function AdminPage() {
                   />
                 </div>
                 <div className="field full">
-                  <label>Project image (optional, replaces the color placeholder)</label>
-                  <div className="admin-row">
-                    <label className="btn btn-g btn-sm" style={{ cursor: "pointer" }}>
-                      {uploading ? "Processing…" : "Upload image"}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={onPickImage}
-                        disabled={uploading}
-                        style={{ display: "none" }}
-                      />
-                    </label>
-                    {editing.image && (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-danger"
-                        onClick={() => setEditing({ ...editing, image: "" })}
-                      >
-                        Remove image
-                      </button>
-                    )}
-                  </div>
-                  {editing.image && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={editing.image}
-                      alt="Preview"
-                      style={{
-                        marginTop: 10,
-                        width: 180,
-                        aspectRatio: "4 / 3",
-                        objectFit: "cover",
-                        borderRadius: 12,
-                        border: "1px solid var(--line)",
-                        display: "block",
-                      }}
-                    />
+                  <label>
+                    Project photos ({(editing.images ?? []).length}/{MAX_PROJECT_IMAGES}) —
+                    the first one is the card cover
+                  </label>
+                  {(editing.images ?? []).length > 0 && (
+                    <div className="img-grid">
+                      {(editing.images ?? []).map((src, i) => (
+                        <div className="img-thumb" key={i}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={src} alt={`Photo ${i + 1}`} />
+                          {i === 0 && <span className="img-cover-badge">cover</span>}
+                          <button
+                            type="button"
+                            className="img-thumb-remove"
+                            aria-label="Remove photo"
+                            onClick={() => removeImageAt(i)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
-                  <input
-                    style={{ marginTop: 10 }}
-                    value={editing.image?.startsWith("data:") ? "" : editing.image ?? ""}
-                    onChange={(e) => setEditing({ ...editing, image: e.target.value })}
-                    placeholder="…or paste an image URL (https://… or /images/…)"
-                  />
+                  {(editing.images ?? []).length < MAX_PROJECT_IMAGES && (
+                    <>
+                      <div className="admin-row" style={{ marginTop: 10 }}>
+                        <label className="btn btn-g btn-sm" style={{ cursor: "pointer" }}>
+                          {uploading ? "Processing…" : "Upload photos"}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={onPickImages}
+                            disabled={uploading}
+                            style={{ display: "none" }}
+                          />
+                        </label>
+                      </div>
+                      <div className="admin-row" style={{ marginTop: 10 }}>
+                        <input
+                          value={imageUrlInput}
+                          onChange={(e) => setImageUrlInput(e.target.value)}
+                          placeholder="…or paste an image URL (https://… or /images/…)"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addImageUrl();
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-g btn-sm"
+                          onClick={addImageUrl}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div className="field full">
-                  <label>Description</label>
+                  <label>
+                    Description
+                    {editLang !== "en" && (
+                      <span style={{ textTransform: "none", letterSpacing: 0 }}>
+                        {" "}
+                        · optional, falls back to English
+                      </span>
+                    )}
+                  </label>
                   <textarea
-                    value={editing.desc}
-                    onChange={(e) => setEditing({ ...editing, desc: e.target.value })}
-                    required
+                    value={
+                      editLang === "en"
+                        ? editing.desc
+                        : editing.translations?.[editLang]?.desc ?? ""
+                    }
+                    onChange={(e) =>
+                      editLang === "en"
+                        ? setEditing({ ...editing, desc: e.target.value })
+                        : setTranslationField(editLang, "desc", e.target.value)
+                    }
+                    placeholder={editLang === "en" ? undefined : editing.desc}
+                    required={editLang === "en"}
                   />
                 </div>
               </div>

@@ -1,8 +1,19 @@
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { getDb } from "./firebase";
+import type { Lang } from "./i18n";
 
 export type ProjectCat = "branding" | "marketing" | "design";
 export type ProjectPh = "ph-sage" | "ph-moss" | "ph-brown" | "ph-clay";
+
+export const MAX_PROJECT_IMAGES = 6;
+
+// Only zh/ja need explicit overrides — English lives in the base
+// `title`/`desc` fields so every project works without any translation.
+export interface ProjectTranslation {
+  title?: string;
+  desc?: string;
+}
+export type ProjectTranslations = Partial<Record<"zh" | "ja", ProjectTranslation>>;
 
 export interface Project {
   id?: string;
@@ -13,8 +24,28 @@ export interface Project {
   slot: string;
   desc: string;
   url?: string;
+  /** @deprecated kept for older documents — use `images[0]` instead */
   image?: string;
+  images?: string[];
+  translations?: ProjectTranslations;
   order?: number;
+}
+
+// A project's images regardless of whether it was saved before or after
+// multi-image support (older docs only have the single `image` field).
+export function projectImages(p: Project): string[] {
+  if (p.images && p.images.length) return p.images.slice(0, MAX_PROJECT_IMAGES);
+  return p.image ? [p.image] : [];
+}
+
+// Falls back to the base (English) text whenever a translation is missing.
+export function localizedTitle(p: Project, lang: Lang): string {
+  if (lang === "en") return p.title;
+  return p.translations?.[lang]?.title || p.title;
+}
+export function localizedDesc(p: Project, lang: Lang): string {
+  if (lang === "en") return p.desc;
+  return p.translations?.[lang]?.desc || p.desc;
 }
 
 // Shown until projects exist in Firestore (and whenever Firebase isn't configured).

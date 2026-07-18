@@ -8,6 +8,7 @@ import { defaultProjects, fetchProjects, type Project } from "@/lib/projects";
 import { firebaseConfigured, getDb } from "@/lib/firebase";
 import { sendContactEmail } from "@/lib/email";
 import Frog from "./Frog";
+import ProjectCard from "./ProjectCard";
 
 const PETALS = [
   { l: 4, s: 15, k: "petal-leaf lc-sage", d: 15, dl: 0 },
@@ -379,39 +380,23 @@ export default function HomePage() {
               )}
               {!loadingProjects &&
                 cards.map((p) => {
-                const card = (
-                  <article className="card" key={(p.id ?? p.title) + p.num}>
-                    <div className={"ph " + p.ph + (p.image ? " ph-img" : "")}>
-                      {p.image && <img src={p.image} alt={p.title} />}
-                      <span className="phlabel mono">{p.slot}</span>
-                    </div>
-                    <div className="cbody">
-                      <div className="crow">
-                        <span className="ctag">{p.tag}</span>
-                        <span className="cnum">{p.num}</span>
-                      </div>
-                      <h3 className="ctitle serif">{p.title}</h3>
-                      <p className="cdesc">{p.desc}</p>
-                      <span className="cfoot">
-                        {t("viewProject")} <span className="arw">→</span>
-                      </span>
-                    </div>
-                  </article>
-                );
-                return p.url ? (
-                  <a
-                    key={(p.id ?? p.title) + p.num + "-link"}
-                    href={p.url}
-                    target="_blank"
-                    rel="noopener"
-                    style={{ textDecoration: "none", color: "inherit" }}
-                  >
-                    {card}
-                  </a>
-                ) : (
-                  card
-                );
-              })}
+                  const card = (
+                    <ProjectCard project={p} viewLabel={t("viewProject")} lang={lang} />
+                  );
+                  return p.url ? (
+                    <a
+                      key={(p.id ?? p.title) + p.num + "-link"}
+                      href={p.url}
+                      target="_blank"
+                      rel="noopener"
+                      style={{ textDecoration: "none", color: "inherit" }}
+                    >
+                      {card}
+                    </a>
+                  ) : (
+                    <div key={(p.id ?? p.title) + p.num}>{card}</div>
+                  );
+                })}
             </div>
           </div>
         </section>
