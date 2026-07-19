@@ -7,6 +7,23 @@ export type ProjectPh = "ph-sage" | "ph-moss" | "ph-brown" | "ph-clay";
 
 export const MAX_PROJECT_IMAGES = 12;
 
+// Firestore caps a document at 1,048,576 bytes total. Images are stored
+// inline as base64 data URLs, so this leaves headroom for the rest of the
+// project's fields (title, description, translations, etc.) and Firestore's
+// own per-document overhead.
+export const MAX_PROJECT_PHOTOS_BYTES = 900 * 1024;
+// Per-image ceiling for a lightly-loaded project (few photos) — bigger than
+// the worst-case fair share (~900KB / 12 ≈ 75KB) so 1–4 photo projects still
+// get good quality; the admin's uploader narrows this as more photos are
+// added so the running total keeps fitting the budget above.
+export const DEFAULT_IMAGE_BYTE_CEILING = 300 * 1024;
+
+// Rough byte size of a project's stored photos (data URLs are ~1 byte per
+// character; a pasted https:// URL is tiny and barely counts).
+export function imagesByteSize(images: string[]): number {
+  return images.reduce((sum, src) => sum + src.length, 0);
+}
+
 // Only zh/ja need explicit overrides — English lives in the base
 // `title`/`desc` fields so every project works without any translation.
 export interface ProjectTranslation {

@@ -16,13 +16,20 @@ import {
 import { firebaseConfigured, getDb, sha256Hex } from "@/lib/firebase";
 import {
   defaultProjects,
+  DEFAULT_IMAGE_BYTE_CEILING,
+  imagesByteSize,
   MAX_PROJECT_IMAGES,
+  MAX_PROJECT_PHOTOS_BYTES,
   projectImages,
   type Project,
   type ProjectCat,
   type ProjectPh,
 } from "@/lib/projects";
 import { fileToCompressedDataUrl } from "@/lib/image";
+
+function formatKB(bytes: number): string {
+  return Math.round(bytes / 1024) + " KB";
+}
 
 type EditLang = "en" | "zh" | "ja";
 const EDIT_LANGS: { code: EditLang; label: string }[] = [
@@ -197,6 +204,16 @@ export default function AdminPage() {
     setError("");
     try {
       const images = (editing.images ?? []).slice(0, MAX_PROJECT_IMAGES);
+      const totalBytes = imagesByteSize(images);
+      if (totalBytes > MAX_PROJECT_PHOTOS_BYTES) {
+        setError(
+          `These photos add up to ${formatKB(totalBytes)}, which is over Firestore's ` +
+            `${formatKB(MAX_PROJECT_PHOTOS_BYTES)} budget for a single project. Remove a ` +
+            `photo or two, or replace a large one and re-upload it.`
+        );
+        setSaving(false);
+        return;
+      }
       const { id, ...rest } = editing;
       // Keep the legacy `image` field in sync (first image) so anything
       // still reading it — or older cached pages — shows a cover photo too.
@@ -214,7 +231,15 @@ export default function AdminPage() {
       setNotice("Saved.");
       setTimeout(() => setNotice(""), 2000);
     } catch (e) {
-      setError("Save failed. Check Firestore rules.");
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("maximum allowed size")) {
+        setError(
+          "Save failed — these photos are too large together for a single Firestore " +
+            "document (1 MB limit). Remove a photo or two and try again."
+        );
+      } else {
+        setError("Save failed. Check Firestore rules.");
+      }
       console.error(e);
     }
     setSaving(false);
@@ -234,11 +259,25 @@ export default function AdminPage() {
     setUploading(true);
     setError("");
     try {
-      const dataUrls = await Promise.all(
-        toProcess.map((f) => fileToCompressedDataUrl(f))
-      );
+      // Compress one at a time, giving each remaining photo a fair share of
+      // whatever byte budget is left — so a project with only a couple of
+      // photos keeps good quality, while one nearing 12 photos automatically
+      // gets smaller ones so the total still fits a single Firestore document.
+      let usedBytes = imagesByteSize(current);
+      const newUrls: string[] = [];
+      for (let i = 0; i < toProcess.length; i++) {
+        const remaining = Math.max(0, MAX_PROJECT_PHOTOS_BYTES - usedBytes);
+        const slotsLeft = toProcess.length - i;
+        const perFileBudget = Math.max(
+          40_000,
+          Math.min(DEFAULT_IMAGE_BYTE_CEILING, Math.floor(remaining / slotsLeft))
+        );
+        const dataUrl = await fileToCompressedDataUrl(toProcess[i], 1200, perFileBudget);
+        newUrls.push(dataUrl);
+        usedBytes += dataUrl.length;
+      }
       setEditing((prev) =>
-        prev ? { ...prev, images: [...(prev.images ?? []), ...dataUrls] } : prev
+        prev ? { ...prev, images: [...(prev.images ?? []), ...newUrls] } : prev
       );
       if (files.length > toProcess.length) {
         setError(
@@ -267,6 +306,12 @@ export default function AdminPage() {
     const current = editing.images ?? [];
     if (current.length >= MAX_PROJECT_IMAGES) {
       setError(`You can add up to ${MAX_PROJECT_IMAGES} images per project.`);
+      return;
+    }
+    if (imagesByteSize(current) + url.length > MAX_PROJECT_PHOTOS_BYTES) {
+      setError(
+        `That would push this project's photos over the ${formatKB(MAX_PROJECT_PHOTOS_BYTES)} budget.`
+      );
       return;
     }
     setEditing({ ...editing, images: [...current, url] });
@@ -626,6 +671,21 @@ export default function AdminPage() {
                     Project photos ({(editing.images ?? []).length}/{MAX_PROJECT_IMAGES}) —
                     the first one is the card cover
                   </label>
+                  {(editing.images ?? []).length > 0 && (
+                    <p
+                      className={
+                        "admin-note" +
+                        (imagesByteSize(editing.images ?? []) > MAX_PROJECT_PHOTOS_BYTES
+                          ? " admin-err"
+                          : "")
+                      }
+                      style={{ margin: "2px 0 0" }}
+                    >
+                      ≈ {formatKB(imagesByteSize(editing.images ?? []))} of{" "}
+                      {formatKB(MAX_PROJECT_PHOTOS_BYTES)} used{" "}
+                      {"(Firestore's 1 MB-per-project limit)"}
+                    </p>
+                  )}
                   {(editing.images ?? []).length > 0 && (
                     <div className="img-grid">
                       {(editing.images ?? []).map((src, i) => (
