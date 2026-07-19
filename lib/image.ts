@@ -1,11 +1,10 @@
 // Resize + compress an image file in the browser and return a data URL small
-// enough to store directly in a Firestore document (docs are capped at 1 MiB
-// total, and a project can hold up to 12 photos, so each one gets a modest
-// share of that budget — see MAX_PROJECT_PHOTOS_BYTES in lib/projects.ts).
+// enough to store as its own Firestore document — each photo gets its own
+// document (docs are capped at 1 MiB), see MAX_PHOTO_BYTES in lib/projects.ts.
 export async function fileToCompressedDataUrl(
   file: File,
-  maxDim = 1200,
-  maxBytes = 300_000
+  maxDim = 1400,
+  maxBytes = 850 * 1024
 ): Promise<string> {
   const sourceUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();

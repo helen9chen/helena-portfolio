@@ -1,4 +1,4 @@
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, getDocs, orderBy, query, type Firestore } from "firebase/firestore";
 import { getDb } from "./firebase";
 import type { Lang } from "./i18n";
 
@@ -7,22 +7,12 @@ export type ProjectPh = "ph-sage" | "ph-moss" | "ph-brown" | "ph-clay";
 
 export const MAX_PROJECT_IMAGES = 12;
 
-// Firestore caps a document at 1,048,576 bytes total. Images are stored
-// inline as base64 data URLs, so this leaves headroom for the rest of the
-// project's fields (title, description, translations, etc.) and Firestore's
-// own per-document overhead.
-export const MAX_PROJECT_PHOTOS_BYTES = 900 * 1024;
-// Per-image ceiling for a lightly-loaded project (few photos) — bigger than
-// the worst-case fair share (~900KB / 12 ≈ 75KB) so 1–4 photo projects still
-// get good quality; the admin's uploader narrows this as more photos are
-// added so the running total keeps fitting the budget above.
-export const DEFAULT_IMAGE_BYTE_CEILING = 300 * 1024;
-
-// Rough byte size of a project's stored photos (data URLs are ~1 byte per
-// character; a pasted https:// URL is tiny and barely counts).
-export function imagesByteSize(images: string[]): number {
-  return images.reduce((sum, src) => sum + src.length, 0);
-}
+// Each photo lives in its own document in a project's `photos` subcollection
+// (projects/{id}/photos/{n}) rather than inline in the project document —
+// Firestore caps a single document at 1,048,576 bytes, which would otherwise
+// force 12 photos to share one shrinking pool. One document per photo means
+// every photo gets its own budget under that same 1 MiB cap.
+export const MAX_PHOTO_BYTES = 850 * 1024;
 
 // Only zh/ja need explicit overrides — English lives in the base
 // `title`/`desc` fields so every project works without any translation.
@@ -41,15 +31,16 @@ export interface Project {
   slot: string;
   desc: string;
   url?: string;
-  /** @deprecated kept for older documents — use `images[0]` instead */
+  /** @deprecated kept for older documents that predate the photos subcollection */
   image?: string;
   images?: string[];
   translations?: ProjectTranslations;
   order?: number;
 }
 
-// A project's images regardless of whether it was saved before or after
-// multi-image support (older docs only have the single `image` field).
+// A project's images regardless of where they came from: the photos
+// subcollection (current format), a legacy inline `images` array, or an
+// even older single `image` field.
 export function projectImages(p: Project): string[] {
   if (p.images && p.images.length) return p.images.slice(0, MAX_PROJECT_IMAGES);
   return p.image ? [p.image] : [];
@@ -79,6 +70,14 @@ export const defaultProjects: Project[] = [
   { title: "Little Frog Press", tag: "Graphic", cat: "design", ph: "ph-brown", slot: "print & marks", desc: "Logo, seals and stationery for an independent picture-book press." },
 ];
 
+// Reads a project's `photos` subcollection (ordered) as a plain array of URLs.
+export async function fetchProjectPhotos(db: Firestore, projectId: string): Promise<string[]> {
+  const snap = await getDocs(
+    query(collection(db, "projects", projectId, "photos"), orderBy("order", "asc"))
+  );
+  return snap.docs.map((d) => (d.data() as { url: string }).url);
+}
+
 export async function fetchProjects(): Promise<Project[] | null> {
   const db = getDb();
   if (!db) return null;
@@ -87,7 +86,20 @@ export async function fetchProjects(): Promise<Project[] | null> {
       query(collection(db, "projects"), orderBy("order", "asc"))
     );
     if (snap.empty) return null;
-    return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Project, "id">) }));
+    const projects = snap.docs.map(
+      (d) => ({ id: d.id, ...(d.data() as Omit<Project, "id">) }) as Project
+    );
+    // Merge in each project's photos subcollection. Falls back to whatever
+    // inline `images`/`image` the main document already has (older/not-yet-
+    // migrated projects) when the subcollection is empty.
+    await Promise.all(
+      projects.map(async (p) => {
+        if (!p.id) return;
+        const photos = await fetchProjectPhotos(db, p.id);
+        if (photos.length) p.images = photos;
+      })
+    );
+    return projects;
   } catch {
     return null;
   }

@@ -6,6 +6,13 @@ service cloud.firestore {
     match /projects/{id} {
       allow read: if true;
       allow write: if true; // see README — tighten this before going live
+
+      // Each photo is its own document so a 12-photo project doesn't have
+      // to squeeze every image into one project document's 1 MiB cap.
+      match /photos/{photoId} {
+        allow read: if true;
+        allow write: if true; // see README — tighten this before going live
+      }
     }
 
     // The admin password hash must be readable so /admin can verify it.

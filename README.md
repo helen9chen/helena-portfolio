@@ -35,6 +35,12 @@ built-in default projects until Firestore has data.
   `projects` collection) and read notes submitted through the contact form
   (`messages` collection). "Import the 10 default projects" seeds Firestore with
   the design's original cards.
+- Each project can have **up to 12 photos**, uploaded right in the admin (drag
+  in files or paste image URLs) with automatic client-side compression. Photos
+  are stored one-per-document in a `projects/{id}/photos` subcollection rather
+  than inline on the project — Firestore caps a single document at 1 MiB, so
+  this gives every photo its own budget (up to ~850 KB, good quality) instead
+  of 12 photos splitting one shrinking pool.
 
 ### Security caveat — please read
 
